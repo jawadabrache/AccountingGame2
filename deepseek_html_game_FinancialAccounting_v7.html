@@ -1,0 +1,863 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <script>
+    document.addEventListener("contextmenu", e => e.preventDefault(), false);
+    document.addEventListener("keydown", e => {
+      if (e.ctrlKey || e.keyCode == 123) {
+        e.stopPropagation();
+        e.preventDefault();
+      }
+    });
+  </script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+  <title>📚 Accounting Game Master · Step by Step</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      font-family: system-ui, 'Segoe UI', 'Inter', 'Helvetica Neue', sans-serif;
+    }
+    body {
+      background: linear-gradient(145deg, #1e2a3a 0%, #0f1a24 100%);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+      margin: 0;
+    }
+    .game-container {
+      max-width: 1100px;
+      width: 100%;
+      background: rgba(255,255,255,0.1);
+      backdrop-filter: blur(2px);
+      border-radius: 2rem;
+      box-shadow: 0 20px 35px -10px rgba(0,0,0,0.4);
+      overflow: hidden;
+      border: 1px solid rgba(255,255,255,0.2);
+    }
+    .game-header {
+      background: #0b2b38;
+      padding: 1rem 2rem;
+      color: white;
+      border-bottom: 1px solid #2c7a6e;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .header-title h1 {
+      margin: 0;
+      font-size: 1.6rem;
+      font-weight: 600;
+    }
+    .header-title p {
+      margin: 0.25rem 0 0;
+      opacity: 0.8;
+      font-size: 0.8rem;
+    }
+    .badge-area, .points-area {
+      padding: 0.4rem 1rem;
+      border-radius: 40px;
+      font-weight: bold;
+      font-size: 0.8rem;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+      white-space: nowrap;
+    }
+    .badge-area { background: #f5c542; color: #2d3e50; }
+    .points-area { background: #e74c3c; color: white; }
+    .points-area.high { background: #27ae60; }
+    .points-area.low { background: #e74c3c; }
+    .phase-badge {
+      display: inline-block;
+      background: #2c7a6e;
+      padding: 0.2rem 1rem;
+      border-radius: 30px;
+      font-size: 0.75rem;
+      font-weight: 500;
+      margin: 0.8rem 0 0 1.5rem;
+    }
+    .chat-area {
+      background: #fef9ef;
+      height: 480px;
+      overflow-y: auto;
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+    .message {
+      display: flex;
+      gap: 0.8rem;
+      animation: slideIn 0.3s ease-out;
+    }
+    .message.ai { justify-content: flex-start; }
+    .message.user { justify-content: flex-end; }
+    .message.user.wrong { animation: shake 0.3s ease-in-out; }
+    .message.user.correct { animation: bounce 0.4s ease; }
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateX(-15px); }
+      to { opacity: 1; transform: translateX(0); }
+    }
+    @keyframes shake {
+      0%,100% { transform: translateX(0); }
+      25% { transform: translateX(-5px); }
+      75% { transform: translateX(5px); }
+    }
+    @keyframes bounce {
+      0%,100% { transform: translateY(0); }
+      50% { transform: translateY(-6px); }
+    }
+    .avatar {
+      width: 44px;
+      height: 44px;
+      background: #e0e7e3;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.6rem;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      flex-shrink: 0;
+    }
+    .bubble {
+      max-width: 80%;
+      padding: 0.75rem 1rem;
+      border-radius: 1.2rem;
+      line-height: 1.4;
+      font-size: 0.92rem;
+      background: #e6f4f0;
+      color: #0a2b2a;
+    }
+    .user .bubble {
+      background: #1e6f5c;
+      color: white;
+    }
+    .input-area {
+      background: white;
+      padding: 1rem 1.5rem;
+      border-top: 1px solid #ddd;
+      display: flex;
+      gap: 0.8rem;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .input-area input {
+      flex: 1;
+      padding: 0.8rem 1rem;
+      border: 1px solid #ccc;
+      border-radius: 2rem;
+      font-size: 0.9rem;
+      outline: none;
+    }
+    .input-area button {
+      background: #1e6f5c;
+      border: none;
+      color: white;
+      padding: 0.7rem 1.5rem;
+      border-radius: 2rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .reset-btn { background: #6c757d; }
+    .domain-selector {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.7rem;
+      margin: 1rem 0;
+      justify-content: center;
+    }
+    .domain-btn {
+      background: #e9ecef;
+      border: none;
+      padding: 0.5rem 1.2rem;
+      border-radius: 2rem;
+      font-weight: 500;
+      cursor: pointer;
+    }
+    .info-note {
+      font-size: 0.7rem;
+      text-align: center;
+      padding: 0.5rem;
+      background: #f0f2f5;
+      color: #4b5563;
+    }
+    .character-name {
+      font-weight: bold;
+      font-size: 0.75rem;
+      margin-bottom: 0.2rem;
+      color: #2c7a6e;
+    }
+  </style>
+</head>
+<body>
+<div class="game-container">
+  <div class="game-header">
+    <div class="header-title">
+      <h1>📘 Accounting Game Master</h1>
+      <p>Team Challenge · Financial Accounting with Real‑world Characters</p>
+      <p>Copyright Jawad Abrache, 2026</p>
+    </div>
+    <div class="badge-area" id="badgeDisplay">🏅 No badge yet</div>
+    <div class="points-area" id="pointsDisplay">⭐ 100 pts</div>
+  </div>
+  <div class="phase-badge" id="phaseLabel">Phase 0: Domain Selection</div>
+  <div class="chat-area" id="chatLog">
+    <div class="message ai">
+      <div class="avatar">🧙</div>
+      <div class="bubble">👋 Welcome, future accountant! I'm your Game Master. You'll work with domain experts to solve accounting challenges. Choose a domain, define your role, and let's begin.</div>
+    </div>
+    <div class="message ai">
+      <div class="avatar">📊</div>
+      <div class="bubble"><strong>Domains:</strong> Sports, Fashion, Technology, Startup, Eco‑Friendly, Social Media.</div>
+    </div>
+  </div>
+  <div class="input-area" id="inputArea">
+    <input type="text" id="userInput" placeholder="Your answer or role..." autocomplete="off">
+    <button id="sendBtn">➤ Send</button>
+    <button id="resetBtn" class="reset-btn">⟳ Start Over</button>
+  </div>
+  <div class="info-note">
+    💡 You'll meet coaches, designers, founders & more. Wrong answers deduct 5 pts. Earn "Certified Accountant" badge!
+  </div>
+</div>
+
+<script>
+  // ----- Helper: Base64 decode -----
+  function decodeBase64(enc) { try { return atob(enc); } catch(e) { return enc; } }
+
+  // ----- Obfuscated correct answers (Base64) – same as before, but now we also store individual account names -----
+  const answersB64 = {
+    Sports: {
+      acc1: "YWNjb3VudHMgcmVjZWl2YWJsZQ==",        // accounts receivable
+      acc2: "c2FsZXMgcmV2ZW51ZQ==",            // sales revenue
+      type1: "QXNzZXQ=",                          // Asset
+      type2: "UmV2ZW51ZQ==",                      // Revenue
+      dir1: "aW5jcmVhc2U=",                       // increase
+      dir2: "aW5jcmVhc2U=",                       // increase
+      debitAcc: "U3VwcGxpZXM=",        // Supplies
+      debitAmt: "NTAw",  // 500
+      creditAcc: "Y2FzaA==",                      // cash
+      creditAmt: "NTAw", // 500
+      netIncome: "MjUwMDA=", // 25000
+      endRE: "NDEwMDA="    // 41000
+    },
+    Fashion: {
+      acc1: "YWNjb3VudHMgcmVjZWl2YWJsZQ==",        // accounts receivable
+      acc2: "c2FsZXMgcmV2ZW51ZQ==", // sales revenue
+      type1: "QXNzZXQ=",                         // Asset
+      type2: "UmV2ZW51ZQ==",  // Revenue
+      dir1: "aW5jcmVhc2U=",                       // increase
+      dir2: "aW5jcmVhc2U=",                       // increase
+      debitAcc: "UmF3IE1hdGVyaWFscyBJbnZlbnRvcnk=",    // Raw Materials Inventory
+      debitAmt: "MjAwMA==",    // 2000
+      creditAcc: "YWNjb3VudHMgcGF5YWJsZQ==", // accounts payable
+      creditAmt: "MjAwMA==",   // 2000
+      netIncome: "MzAwMDA=",   // 30000
+      endRE: "NTUwMDA="  // 55000
+    },
+    Technology: {
+      acc1: "YWNjb3VudHMgcmVjZWl2YWJsZQ==",         // accounts receivable
+      acc2: "c2FsZXMgcmV2ZW51ZQ==", // sales revenue
+      type1: "QXNzZXQ=",                         // Asset
+      type2: "UmV2ZW51ZQ==",  // Revenue
+      dir1: "aW5jcmVhc2U=",   // increase
+      dir2: "aW5jcmVhc2U=",   // increase
+      debitAcc: "c29mdHdhcmUgZXhwZW5zZQ==",     // software expense
+      debitAmt: "MTUwMA==",    // 1500
+      creditAcc: "Y2FzaA==",                      // cash
+      creditAmt: "MTUwMA==",   // 1500
+      netIncome: "NzAwMDA=",   // 70000
+      endRE: "MTEwMDAw"   // 110000
+    },
+    Startup: {
+      acc1: "Y2FzaA==",    // cash
+      acc2: "Q2FwaXRhbCBTdG9jaw==",  // Capital Stock
+      type1: "QXNzZXQ=",   // Asset
+      type2: "RXF1aXR5",   // Equity
+      dir1: "aW5jcmVhc2U=",    // increase
+      dir2: "aW5jcmVhc2U=",    // increase
+      debitAcc: "U2FsYXJpZXMgYW5kIFdhZ2VzIEV4cGVuc2U=",    // Salaries and Wages Expense
+      debitAmt: "MTAwMDA=", //  10000
+      creditAcc: "Y2FzaA==",   // cash
+      creditAmt: "MTAwMDA=",   // 10000
+      netIncome: "ODAwMDA=",   // 80000
+      endRE: "MTI1MDAw"    // 125000
+    },
+    'Eco-Friendly': {
+      acc1: "YWNjb3VudHMgcmVjZWl2YWJsZQ==",     // accounts receivable
+      acc2: "c2FsZXMgcmV2ZW51ZQ==",      // sales revenue
+      type1: "QXNzZXQ=",     // Asset
+      type2: "UmV2ZW51ZQ==",   // Revenue
+      dir1: "aW5jcmVhc2U=",    // increase
+      dir2: "aW5jcmVhc2U=",    // increase
+      debitAcc: "cGFja2FnaW5nIGV4cGVuc2U=",    // packaging expense
+      debitAmt: "ODAw",    // 800
+      creditAcc: "Y2FzaA==",   // cash
+      creditAmt: "ODAw",    // 800
+      netIncome: "MjUwMDA=",    // 25000
+      endRE: "MzUwMDA="    // 35000
+    },
+    'Social Media': {
+      acc1: "YWNjb3VudHMgcmVjZWl2YWJsZQ==", // accounts receivable
+      acc2: "YWQgcmV2ZW51ZQ==",   // ad revenue
+      type1: "QXNzZXQ=",   // Asset
+      type2: "UmV2ZW51ZQ==",  // Revenue
+      dir1: "aW5jcmVhc2U=",  // increase
+      dir2: "aW5jcmVhc2U=",  // increase
+      debitAcc: "Y29udGVudCBleHBlbnNl",   // content expense
+      debitAmt: "MjAwMA==",   // 2000
+      creditAcc: "Y2FzaA==",  // Cash
+      creditAmt: "MjAwMA==",  // 2000
+      netIncome: "ODAwMDA=",   // 80000
+      endRE: "MTAwMDAw"    // 100000
+    }
+  };
+
+  // Domain characters (same as before)
+  const domainCharacters = {
+    Sports: { ch1: "⚽ Coach Abdesslam", ch2: "💰 Finance Director Amine", ch3: "📊 Club Analyst Ilham", ref: "🧢 GM Mohammed" },
+    Fashion: { ch1: "👗 Designer Bouthaina", ch2: "🧵 Supply Chain Mgr. Ilyass", ch3: "💎 Brand CFO Habiba", ref: "👠 CEO Ikram" },
+    Technology: { ch1: "💻 Product Lead Hind", ch2: "⚙️ Engineering Head Younes", ch3: "📈 Tech Analyst Youssef", ref: "🚀 Mentor Abderrahim" },
+    Startup: { ch1: "🚀 Founder Ghita", ch2: "👩‍💻 CTO Khalil", ch3: "💰 Investor Relations Samir", ref: "🧠 Board Member Zineb" },
+    'Eco-Friendly': { ch1: "🌿 Green Officer Adiba", ch2: "♻️ Operations Lead Mokhtar", ch3: "📉 Impact Analyst Aziz", ref: "🌎 Director Karima" },
+    'Social Media': { ch1: "📸 Influencer Rhizlane", ch2: "📱 Social Media Mgr. Kaoutar", ch3: "📊 Analytics Lead Youssef", ref: "🌟 Platform Partner Abdellah" }
+  };
+
+  // Helper: get character avatar and name
+  function getCharacter(domain, stepType) {
+    let role = domainCharacters[domain][stepType];
+    if (!role) return { avatar: "🧙", name: "Game Master" };
+    let avatar = role.split(' ')[0];
+    let name = role.substring(role.indexOf(' ') + 1);
+    return { avatar, name };
+  }
+
+  // ----- QUESTION SEQUENCES (each challenge broken into individual short-answer questions) -----
+  // Each item: { questionText, answerKey, isNumeric }
+  function getQuestionsForChallenge(challengeNum, domain) {
+    const txn1 = (() => {
+      if (domain === 'Sports') return "We provided sports training services on credit ($120,000).";
+      if (domain === 'Fashion') return "We sold dresses on credit ($30,000).";
+      if (domain === 'Technology') return "We sold laptops on credit ($200,000).";
+      if (domain === 'Startup') return "The owners contributed $50,000 cash to the business.";
+      if (domain === 'Eco-Friendly') return "We sold recycled bottles on credit ($45,000).";
+      return "We earned ad revenue on credit ($80,000).";
+    })();
+    const txn2 = (() => {
+      if (domain === 'Sports') return "We bought training supplies for $500 cash.";
+      if (domain === 'Fashion') return "We bought fabric for $2,000 on account.";
+      if (domain === 'Technology') return "We paid $1,500 on a 3-month software license fee.";
+      if (domain === 'Startup') return "We paid $10,000 salaries.";
+      if (domain === 'Eco-Friendly') return "We paid $800 for eco-packaging.";
+      return "We paid $2,000 to content creators.";
+    })();
+
+    if (challengeNum === 1) {
+      return [
+        { questionText: `\nTransaction: ${txn1}\nWhat is the DEBITED account affected? (Consult the list of accounts provided to you)`, answerKey: 'acc1', isNumeric: false },
+        { questionText: `\nTransaction: ${txn1}\nWhat is the OTHER account affected? (Consult the list of accounts provided to you)`, answerKey: 'acc2', isNumeric: false },
+        { questionText: `\nFor the first account (${decodeBase64(answersB64[domain].acc1)}), what is its type? Pick one of the following (Asset, Liability, Equity, Revenue, or Expense)`, answerKey: 'type1', isNumeric: false },
+        { questionText: `\nFor the second account, what is its type? Pick one of the following (Asset, Liability, Equity, Revenue, or Expense)`, answerKey: 'type2', isNumeric: false },
+        { questionText: `\nDoes the first account INCREASE or DECREASE?`, answerKey: 'dir1', isNumeric: false },
+        { questionText: `\nDoes the second account INCREASE or DECREASE?`, answerKey: 'dir2', isNumeric: false }
+      ];
+    } else if (challengeNum === 2) {
+      return [
+	{ questionText: `\nTransaction: ${txn2}\nWhich account is DEBITED? (Consult the list of accounts provided to you)`, answerKey: 'debitAcc', isNumeric: false },
+        { questionText: `\nWhat is the DEBIT amount? (just the number; DO NOT type the '$' sign or the ',' delimiter)`, answerKey: 'debitAmt', isNumeric: true },
+        { questionText: `\nTransaction: ${txn2}\nWhich account is CREDITED? (Consult the list of accounts provided to you)`, answerKey: 'creditAcc', isNumeric: false },
+        { questionText: `\nWhat is the CREDIT amount? (just the number; DO NOT type the '$' sign or the ',' delimiter)`, answerKey: 'creditAmt', isNumeric: true }
+      ];
+    } else { // challenge 3
+      let balances = '';
+      if (domain === 'Sports') balances = "Service Revenue $85,000, Salaries Exp $40,000, Rent $15,000, Utilities $5,000, Beg RE $20,000, Dividends $4,000.";
+      else if (domain === 'Fashion') balances = "Sales Revenue $120,000, Cost of Goods Sold (COGS) $50,000, Rent $25,000, Salaries $15,000, Beg RE $30,000, Dividends $5,000.";
+      else if (domain === 'Technology') balances = "Service Revenue $250,000, Salaries $120,000, Rent $40,000, Utilities $20,000, Beg RE $50,000, Dividends $10,000.";
+      else if (domain === 'Startup') balances = "Revenue $300,000, Salaries $150,000, Marketing $50,000, Rent $20,000, Beg RE $60,000, Dividends $15,000.";
+      else if (domain === 'Eco-Friendly') balances = "Revenue $90,000, Cost of Goods Sold (COGS) $40,000, Salaries $15,000, Utilities $10,000, Beg RE $12,000, Dividends $2,000.";
+      else balances = "Ad Revenue $200,000, Content Expenses $70,000, Software Expenses $30,000, Rent $20,000, Beg RE $40,000, Dividends $20,000.";
+      return [
+        { questionText: `\nGiven: ${balances}\nWhat is NET INCOME? (just the number; DO NOT type the '$' sign or the ',' delimiter)`, answerKey: 'netIncome', isNumeric: true },
+        { questionText: `\nWhat is ENDING RETAINED EARNINGS? (just the number; DO NOT type the '$' sign or the ',' delimiter)`, answerKey: 'endRE', isNumeric: true }
+      ];
+    }
+  }
+
+  // ----- GAME STATE -----
+  let state = {
+    phase: 'domainSelect',  // domainSelect, storyCreation, challenge, debriefing, completed
+    domain: null,
+    role: null,
+    storyContext: null,
+    points: 100,
+    currentChallenge: 1,          // 1,2,3
+    currentQuestionIndex: 0,
+    questionsList: [],            // will hold the question objects for current challenge
+    challengePassed: { 1: false, 2: false, 3: false },
+    reflectionAttempts: 0,
+    badgeEarned: null,
+    domainButtonsAdded: false
+  };
+
+  // DOM elements
+  const chatLog = document.getElementById('chatLog');
+  const userInput = document.getElementById('userInput');
+  const sendBtn = document.getElementById('sendBtn');
+  const resetBtn = document.getElementById('resetBtn');
+  const phaseLabel = document.getElementById('phaseLabel');
+  const badgeDisplay = document.getElementById('badgeDisplay');
+  const pointsDisplay = document.getElementById('pointsDisplay');
+
+  function updatePhaseBadge() {
+    let text = '';
+    if (state.phase === 'domainSelect') text = '🎯 Choose Domain';
+    else if (state.phase === 'storyCreation') text = '📖 Define Your Role';
+    else if (state.phase === 'challenge') text = `⚖️ Challenge ${state.currentChallenge} – Step ${state.currentQuestionIndex+1}/${state.questionsList.length}`;
+    else if (state.phase === 'debriefing') text = '🧠 Reflection';
+    else text = '🏁 Complete';
+    phaseLabel.innerText = text;
+  }
+
+  function updatePoints() {
+    pointsDisplay.innerHTML = `⭐ ${state.points} pts`;
+    if (state.points >= 70) pointsDisplay.className = 'points-area high';
+    else if (state.points <= 40) pointsDisplay.className = 'points-area low';
+    else pointsDisplay.className = 'points-area';
+  }
+
+  function updateBadge() {
+    if (state.badgeEarned === 'certified') {
+      badgeDisplay.innerHTML = '🏅 Certified Accountant ★';
+      badgeDisplay.style.background = '#f5c542';
+    } else if (state.badgeEarned === 'aspiring') {
+      badgeDisplay.innerHTML = '📘 Aspiring Accountant';
+      badgeDisplay.style.background = '#a7c0cd';
+    } else {
+      badgeDisplay.innerHTML = '🏅 No badge yet';
+      badgeDisplay.style.background = '#f5c542';
+    }
+  }
+
+  function deductPoints(amount) {
+    state.points = Math.max(0, state.points - amount);
+    updatePoints();
+  }
+
+  function addMessage(role, avatar, name, text, isHtml = false, extraClass = '') {
+    const msgDiv = document.createElement('div');
+    msgDiv.className = `message ${role}`;
+    if (extraClass) msgDiv.classList.add(extraClass);
+    const avatarDiv = document.createElement('div');
+    avatarDiv.className = 'avatar';
+    avatarDiv.innerText = avatar;
+    const bubble = document.createElement('div');
+    bubble.className = 'bubble';
+    if (name) {
+      const nameSpan = document.createElement('div');
+      nameSpan.className = 'character-name';
+      nameSpan.innerText = name;
+      bubble.appendChild(nameSpan);
+    }
+    if (isHtml) bubble.innerHTML += text;
+    else bubble.innerText += text;
+    msgDiv.appendChild(avatarDiv);
+    msgDiv.appendChild(bubble);
+    chatLog.appendChild(msgDiv);
+    chatLog.scrollTop = chatLog.scrollHeight;
+  }
+
+  function addAIMessage(text, isHtml = false) {
+    addMessage('ai', '🧙', 'Game Master', text, isHtml);
+  }
+
+  function addUserMessage(text, isWrong = false, isCorrect = false) {
+    let cls = '';
+    if (isWrong) cls = 'wrong';
+    if (isCorrect) cls = 'correct';
+    addMessage('user', '👤', null, text, false, cls);
+  }
+
+  function addCharacterMessage(avatar, name, text, isHtml = false) {
+    addMessage('ai', avatar, name, text, isHtml);
+  }
+
+  function renderDomainButtons() {
+    const container = document.createElement('div');
+    container.className = 'domain-selector';
+    container.id = 'domainBtnContainer';
+    ['Sports', 'Fashion', 'Technology', 'Startup', 'Eco-Friendly', 'Social Media'].forEach(dom => {
+      const btn = document.createElement('button');
+      btn.innerText = dom;
+      btn.classList.add('domain-btn');
+      btn.onclick = () => selectDomain(dom);
+      container.appendChild(btn);
+    });
+    chatLog.appendChild(container);
+    state.domainButtonsAdded = true;
+  }
+
+  function selectDomain(domain) {
+    if (state.phase !== 'domainSelect') return;
+    state.domain = domain;
+    document.getElementById('domainBtnContainer')?.remove();
+    addAIMessage(`\n✅ You chose **${domain}**. Now tell me your role (e.g., accountant, CFO, controller).`, true);
+    state.phase = 'storyCreation';
+    updatePhaseBadge();
+  }
+
+  function handleStoryCreation(input) {
+    if (!input.trim()) {
+      addAIMessage("Please enter your role.");
+      return;
+    }
+    state.role = input.trim();
+    const story = `You are the ${state.role} for a ${state.domain} organization. Your team will help you analyze transactions.`;
+    state.storyContext = story;
+    addAIMessage(`✨ **Story** ✨\n\n${story}\n\nLet's begin Challenge 1.`, true);
+    startChallenge(1);
+  }
+
+  function startChallenge(num) {
+    state.currentChallenge = num;
+    state.currentQuestionIndex = 0;
+    state.questionsList = getQuestionsForChallenge(num, state.domain);
+    state.phase = 'challenge';
+    updatePhaseBadge();
+    askCurrentQuestion();
+  }
+
+  function askCurrentQuestion() {
+    const idx = state.currentQuestionIndex;
+    if (idx >= state.questionsList.length) {
+      // Challenge completed
+      state.challengePassed[state.currentChallenge] = true;
+      if (state.currentChallenge === 1) startChallenge(2);
+      else if (state.currentChallenge === 2) startChallenge(3);
+      else if (state.currentChallenge === 3) startReflection();
+      return;
+    }
+    const q = state.questionsList[idx];
+    const char = getCharacter(state.domain, `ch${state.currentChallenge}`);
+    addCharacterMessage(char.avatar, char.name, q.questionText, true);
+  }
+
+  function evaluateAnswer(answer) {
+    const idx = state.currentQuestionIndex;
+    const q = state.questionsList[idx];
+    const domain = state.domain;
+    const correctRaw = answersB64[domain][q.answerKey];
+    if (!correctRaw) {
+      addAIMessage("Error: missing answer data. Please restart.");
+      return;
+    }
+    const correct = decodeBase64(correctRaw).toLowerCase().trim();
+    let user = answer.trim().toLowerCase();
+    let isCorrect = false;
+    if (q.isNumeric) {
+      let userNum = parseFloat(user);
+      let correctNum = parseFloat(correct);
+      isCorrect = !isNaN(userNum) && !isNaN(correctNum) && userNum === correctNum;
+    } else {
+      isCorrect = user === correct;
+    }
+    if (isCorrect) {
+      addUserMessage(answer, false, true);
+      const char = getCharacter(domain, `ch${state.currentChallenge}`);
+      addCharacterMessage(char.avatar, char.name, "\n✅ Correct!", false);
+      state.currentQuestionIndex++;
+      askCurrentQuestion();
+    } else {
+      addUserMessage(answer, true);
+      deductPoints(5);
+      const char = getCharacter(domain, `ch${state.currentChallenge}`);
+      let hint = '';
+      // Minimal hint – never give answer
+      if (q.answerKey.startsWith('acc')) hint = "Check which accounts are affected by the transaction.";
+      else if (q.answerKey.startsWith('type')) hint = "Think about the nature of the account (asset, liability, etc.).";
+      else if (q.answerKey.startsWith('dir')) hint = "Does the account go up or down?";
+      else if (q.answerKey.includes('Amt')) hint = "Double-check the transaction amount.";
+      else if (q.answerKey === 'netIncome') hint = "Revenues minus expenses.";
+      else if (q.answerKey === 'endRE') hint = "Beginning RE + Net Income - Dividends.";
+      else if (q.answerKey.includes('debitAcc') || q.answerKey.includes('creditAcc')) hint = "Which account is debited/credited?";
+      else hint = "Review the transaction carefully.";
+      addCharacterMessage(char.avatar, char.name, `\n❌ Wrong. ${hint} Try again.`, false);
+    }
+  }
+
+  function startReflection() {
+    state.phase = 'debriefing';
+    updatePhaseBadge();
+    const char = getCharacter(state.domain, 'ref');
+    const REFLECTION_QUESTION = "How does the accounting equation (Assets = Liabilities + Equity) stay balanced after each transaction? Give one specific example from the story you just played. Write at least 150 characters.";
+    addCharacterMessage(char.avatar, char.name, `\n📝 Reflection: ${REFLECTION_QUESTION} You have 3 attempts.`, true);
+    state.reflectionAttempts = 1;
+  }
+
+/* =====================================================================
+ * IMPROVED REFLECTION EVALUATOR
+ * ---------------------------------------------------------------------
+ * Replaces the original evaluateReflection().
+ *
+ * Design goals:
+ *   • Domain-agnostic — works for Sports, Fashion, Technology, Startup,
+ *     Eco-Friendly and Social Media (and any future domains you add).
+ *   • Structural, not keyword-brittle — an "example" is detected by
+ *     combining (transaction verb) + (account noun) + (money / balance
+ *     signal), not by matching a fixed vocabulary.
+ *   • Keeps "equation" and "example" checks independent, so a student
+ *     cannot satisfy both with a single sentence.
+ *   • Produces targeted feedback for the failure branch.
+ * ===================================================================== */
+function evaluateReflection(answer) {
+  const lower = answer.toLowerCase();
+
+  // ---------- 1. Length check -----------------------------------------
+  const longEnough = answer.length >= 150;
+
+  // ---------- 2. Equation check ---------------------------------------
+  // (original variants + a couple of natural-language ones)
+  const hasEquation =
+    lower.includes("equation") ||
+    lower.includes("assets = liabilities") ||
+    lower.includes("assets = liabilities + equity") ||
+    lower.includes("assets = liabilities + owner") ||
+    lower.includes("assets=liabilities") ||
+    lower.includes("a = l + e") ||
+    lower.includes("a=l+e");
+
+  // ---------- 3. Example check (elaborated, see detectExample) --------
+  const exampleCheck = detectExample(lower);
+  const hasExample   = exampleCheck.passed;
+
+  // ---------- 4. Final decision ---------------------------------------
+  const satisfactory = longEnough && hasEquation && hasExample;
+  const char = getCharacter(state.domain, 'ref');
+
+  if (satisfactory) {
+    state.badgeEarned = 'certified';
+    addCharacterMessage(
+      char.avatar, char.name,
+      "\n🌟 Excellent reflection! You've earned the **Certified Accountant** badge!",
+      false
+    );
+    addAIMessage("🏆 Congratulations! Press Start Over to play again.", true);
+    updateBadge();
+    state.phase = 'completed';
+    updatePhaseBadge();
+  }
+  else if (state.reflectionAttempts < 3) {
+    let feedback = "\n⚠️ Needs improvement. ";
+
+    if (!longEnough) feedback += "Write at least 150 characters. ";
+
+    if (!hasEquation) {
+      feedback += "Mention the accounting equation (Assets = Liabilities + Equity). ";
+    }
+
+    if (!hasExample) {
+      // Targeted feedback based on *which* structural signal is missing
+      const d = exampleCheck.detail;
+      if (d.hasMoney && !d.hasNoun) {
+        feedback += "Name the specific accounts affected (e.g., Cash, Unearned Revenue, Inventory). ";
+      } else if (d.hasNoun && !d.hasBal && !d.hasMoney) {
+        feedback += "Explain how the accounts move — increases / decreases, or debits / credits. ";
+      } else if (d.nounIsEquationOnly) {
+        feedback += "Your example only mentions Assets / Liabilities / Equity; name a specific account from the story. ";
+      } else {
+        feedback += "Give a concrete transaction example (who did what, and for how much). ";
+      }
+    }
+
+    feedback += `Attempt ${state.reflectionAttempts} of 3. You lose 10 points.`;
+    addCharacterMessage(char.avatar, char.name, feedback, false);
+
+    deductPoints(10);
+    state.reflectionAttempts++;
+
+    addCharacterMessage(
+      char.avatar, char.name,
+      "\nTry again: " +
+        (state.reflectionAttempts === 1
+          ? "Explain how the equation stays balanced with an example."
+          : "Be more detailed."),
+      false
+    );
+  }
+  else {
+    state.badgeEarned = 'aspiring';
+    addCharacterMessage(
+      char.avatar, char.name,
+      "\n📘 Final attempt used. You earned **Aspiring Accountant** badge. " +
+      "Next time include the equation and a concrete example.",
+      false
+    );
+    updateBadge();
+    deductPoints(10);
+    state.phase = 'completed';
+    updatePhaseBadge();
+    addAIMessage("\nGame finished. Restart to try for Certified badge.", true);
+  }
+}
+
+/* =====================================================================
+ * detectExample — structural "is this a real transaction example?"
+ * ---------------------------------------------------------------------
+ * Returns { passed, detail } so the caller can give targeted feedback.
+ * Generic across all six domains: it looks for accounting *structure*
+ * (transaction verb + account noun + money / balance word), not for
+ * domain-specific keywords.
+ * ===================================================================== */
+function detectExample(lower) {
+
+  // ---- Account / entity nouns (domain-agnostic core + cross-domain) --
+  const accountNouns = [
+    // core accounting accounts
+    "cash", "accounts receivable", "accounts payable", "inventory",
+    "supplies", "equipment", "prepaid", "unearned", "revenue",
+    "expense", "liability", "liabilities", "asset", "assets",
+    "equity", "retained earnings", "common stock", "dividend",
+    "note payable", "loan", "capital", "drawings", "service revenue",
+    // Sport story
+    "ticket", "season ticket", "investment",
+    // Fashion story
+    "dress", "fabric", "sales",
+    // Technology story
+    "laptop", "software", "license",
+    // Startup story
+    "salary", "salaries",
+    // Eco-Friendly story
+    "bottle", "recycled", "packaging",
+    // Social Media story
+    "ad revenue", "content", "creator",
+    // generic cross-domain extras
+    "receivable", "payable", "deferred revenue", "owner's equity"
+  ];
+
+  // ---- Transaction verbs ---------------------------------------------
+  const transactionVerbs = [
+    "sold", "purchased", "bought", "paid", "received", "recorded",
+    "issued", "borrowed", "earned", "incurred", "rendered", "provided",
+    "collected", "invested", "withdrew", "recognized", "acquired",
+    "delivered", "billed", "charged", "sells", "buys", "pays",
+    "receives", "records", "issues", "borrows", "earns", "incurs",
+    "renders", "provides", "collects", "invests", "acquires"
+  ];
+
+  // ---- Directional / balance signals ---------------------------------
+  const balanceSignals = [
+    "increase", "decrease", "increases", "decreases",
+    "goes up", "goes down", "up by", "down by",
+    "debited", "credited", "debit", "credit",
+    "rise", "rises", "fall", "falls", "rose", "fell"
+  ];
+
+  // ---- Numeric / money signals ---------------------------------------
+  const hasNumber = /\$?\s?\d[\d,]*/.test(lower);
+  const hasMoney  = /\$\s?\d[\d,]*|\d[\d,]*\s?(dollars|usd)/.test(lower);
+
+  const hasNoun = accountNouns.some(w => lower.includes(w));
+  const hasVerb = transactionVerbs.some(w => lower.includes(w));
+  const hasBal  = balanceSignals.some(w => lower.includes(w));
+
+  // ---- Keep "example" independent from "equation" --------------------
+  // If the ONLY account noun the student mentions is one of the pure
+  // equation words (asset / liability / equity), do NOT let it satisfy
+  // the example check on its own — otherwise the equation sentence
+  // would double-count as an example.
+  const equationOnlyNouns = ["asset", "assets", "liability", "liabilities", "equity"];
+  const nounIsEquationOnly =
+    equationOnlyNouns.some(w => lower.includes(w)) &&
+    !accountNouns.some(
+      w => !equationOnlyNouns.includes(w) && lower.includes(w)
+    );
+
+  // ---- Decision rules ------------------------------------------------
+  // A: transaction verb + a specific account noun  → "We sold tickets on credit."
+  // B: account noun + a $ amount                   → "Cash increases by $120,000."
+  // C: account noun + a balance signal             → "Assets and equity both increase."
+  // D: $ amount + a balance signal                 → "Cash goes up $120,000."
+  const ruleA = hasVerb && hasNoun && !nounIsEquationOnly;
+  const ruleB = hasNoun && hasMoney && !nounIsEquationOnly;
+  const ruleC = hasNoun && hasBal   && !nounIsEquationOnly;
+  const ruleD = hasMoney && hasBal;
+
+  return {
+    passed: ruleA || ruleB || ruleC || ruleD,
+    detail: {
+      ruleA, ruleB, ruleC, ruleD,
+      hasNumber, hasMoney, hasNoun, hasVerb, hasBal,
+      nounIsEquationOnly
+    }
+  };
+}
+
+  function processUserInput(input) {
+    if (!input.trim()) return;
+    if (state.phase === 'domainSelect') {
+      if (!state.domainButtonsAdded) renderDomainButtons();
+      addAIMessage("Click a domain button above.");
+      return;
+    }
+    if (state.phase === 'storyCreation') {
+      handleStoryCreation(input);
+      return;
+    }
+    if (state.phase === 'debriefing') {
+      addUserMessage(input);
+      evaluateReflection(input);
+      return;
+    }
+    if (state.phase === 'completed') {
+      addAIMessage("Game completed. Press Start Over.");
+      return;
+    }
+    if (state.phase === 'challenge') {
+      evaluateAnswer(input);
+    }
+  }
+
+  function resetGame() {
+    chatLog.innerHTML = '';
+    state = {
+      phase: 'domainSelect',
+      domain: null,
+      role: null,
+      storyContext: null,
+      points: 100,
+      currentChallenge: 1,
+      currentQuestionIndex: 0,
+      questionsList: [],
+      challengePassed: { 1: false, 2: false, 3: false },
+      reflectionAttempts: 0,
+      badgeEarned: null,
+      domainButtonsAdded: false
+    };
+    updatePoints();
+    updateBadge();
+    updatePhaseBadge();
+    addAIMessage("👋 Welcome back! Choose a domain:", false);
+    renderDomainButtons();
+  }
+
+  sendBtn.addEventListener('click', () => {
+    const msg = userInput.value.trim();
+    if (msg) processUserInput(msg);
+    userInput.value = '';
+  });
+  resetBtn.addEventListener('click', resetGame);
+  userInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); sendBtn.click(); }
+  });
+
+  window.onload = () => {
+    renderDomainButtons();
+    updatePoints();
+    updateBadge();
+    updatePhaseBadge();
+  };
+</script>
+</body>
+</html>
